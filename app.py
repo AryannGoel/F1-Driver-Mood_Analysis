@@ -45,7 +45,8 @@ def _prewarm_dataset():
 @app.get("/")
 def index():
     """Serve the Pit Wall UI from the same origin as the API."""
-    return FileResponse(FRONTEND)
+    # no-store so the browser never serves a stale UI after an update
+    return FileResponse(FRONTEND, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/health")

@@ -65,6 +65,8 @@
   .dashhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .dashtag{font-family:'Chakra Petch',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--ink);
     border-left:3px solid var(--red);padding-left:10px}
+  .dashnote{background:#2a1a00;border:1px solid var(--stressed);color:var(--stressed);
+    font-size:12px;padding:9px 12px;margin-bottom:12px;font-family:'JetBrains Mono',monospace}
 
   /* ---- LIVE CONTROL panel ---- */
   .control{background:var(--panel);border:1px solid var(--line);margin-bottom:16px}
@@ -221,6 +223,7 @@ let MODE = 'driver';   // 'driver' | 'team'
    ========================================================================= */
 const DASH_TPL = `
   <div class="dashhead"><div class="dashtag"></div><div class="session"></div></div>
+  <div class="dashnote" style="display:none"></div>
   <div class="grid">
     <aside class="col">
       <div class="colhead"><span>TEAM RADIO</span><span class="radiocount" style="color:var(--mute)"></span></div>
@@ -364,6 +367,7 @@ function makeDashboard(container, data){
   function pick(i){ st.sel=i; renderRadio(); renderClip(); renderChart(); playCurrent(); }
 
   selectFirst(); renderAll();
+  if(data.note){ const n=q('.dashnote'); n.textContent='⚠ '+data.note; n.style.display='block'; }
   return { root, pause(){ stopStint(); audio.pause(); } };
 }
 
@@ -498,12 +502,22 @@ async function importRadio(){
   try{
     if(MODE==='team'){
       const drs=teamDrivers(); if(drs.length<2) throw new Error('pick a team with two drivers');
-      setImportStatus(`importing radio for ${drs.map(d=>d.abbr).join(' + ')}…`,'busy');
-      let rng=null, total=0;
-      for(const dr of drs){ const d=await importOne(dr.abbr, clipsDirFor(dr.abbr)); total+=d.imported.length; rng=rng||[d.race_lap_min,d.race_lap_max]; }
-      fillLapSelect('cfg-from',rng[0],rng[1],rng[0]); fillLapSelect('cfg-to',rng[0],rng[1],rng[1]);
+      // import each driver independently (one retry) so a transient HF 500 on one
+      // driver is reported, not silently swallowed
+      let rng=null; const summary=[];
+      for(const dr of drs){
+        setImportStatus(`importing radio for ${dr.abbr}…`,'busy');
+        let ok=false;
+        for(let attempt=0; attempt<2 && !ok; attempt++){
+          try{ const d=await importOne(dr.abbr, clipsDirFor(dr.abbr));
+            rng=rng||[d.race_lap_min,d.race_lap_max]; summary.push(`${dr.abbr} ${d.imported.length}`); ok=true;
+          }catch(e){ if(attempt) summary.push(`${dr.abbr} ✕`); }
+        }
+      }
+      if(rng){ fillLapSelect('cfg-from',rng[0],rng[1],rng[0]); fillLapSelect('cfg-to',rng[0],rng[1],rng[1]); }
       $('results').innerHTML=''; DASHBOARDS=[];
-      setImportStatus(`imported ${total} clips for ${currentTeam().team} — now RUN ANALYSIS`,'ok');
+      const bad = summary.some(s=>s.includes('✕'));
+      setImportStatus(`${currentTeam().team}: ${summary.join(' · ')} clips` + (bad?' — a driver failed, click IMPORT again':' — now RUN ANALYSIS'), bad?'err':'ok');
     } else {
       setImportStatus('importing real radio from Hugging Face…','busy');
       const d=await importOne(val('cfg-driver'),'clips');
@@ -529,14 +543,25 @@ async function runAnalysis(){
   try{
     if(MODE==='team'){
       const drs=teamDrivers(); if(drs.length<2) throw new Error('pick a team with two drivers');
-      const items=[];
+      // analyse each driver independently: one failing (or having no clips) must
+      // NOT hide the other, and the reason must be visible on that driver's panel.
+      const items=[], summary=[];
       for(let i=0;i<drs.length;i++){ const dr=drs[i];
         showOverlay(true,`ANALYSING ${dr.abbr} (${i+1}/${drs.length})`);
-        const d=await analyzeOne(dr.abbr, clipsDirFor(dr.abbr), lo, hi);
-        items.push({laps:d.laps, meta:d.meta, clipsDir:clipsDirFor(dr.abbr), audioVersion:ver});
+        try{
+          const d=await analyzeOne(dr.abbr, clipsDirFor(dr.abbr), lo, hi);
+          const withRadio=d.laps.filter(l=>l.radio).length;
+          items.push({laps:d.laps, meta:d.meta, clipsDir:clipsDirFor(dr.abbr), audioVersion:ver,
+                      note: withRadio ? '' : `No radio for ${dr.abbr} in laps ${lo}–${hi} — widen the lap range (its clips may be on other laps), or click IMPORT BOTH DRIVERS.`});
+          summary.push(`${dr.abbr} ${withRadio}`);
+        }catch(e){
+          items.push({laps:[], meta:{driver:dr.abbr, team:currentTeam().team, compound:'HARD', stint:'—'},
+                      clipsDir:clipsDirFor(dr.abbr), audioVersion:ver, note:`${dr.abbr} failed: ${e.message} — re-IMPORT and RUN.`});
+          summary.push(`${dr.abbr} ✕`);
+        }
       }
       renderResults(items);
-      setRunStatus(`done — ${currentTeam().team}: ${drs.map(d=>d.abbr).join(' vs ')}`,'ok');
+      setRunStatus(`done — ${currentTeam().team}: ${summary.join(' · ')} radio clips`,'ok');
     } else {
       showOverlay(true,'RUNNING ANALYSIS');
       const d=await analyzeOne(val('cfg-driver'),'clips',lo,hi);
