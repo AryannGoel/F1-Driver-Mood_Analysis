@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pit Wall — The Silent Co-Driver</title>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#e10600; --ink:#e8eaed; --mute:#7b828d; --panel:#14161b;
+    --line:#23262e; --bg:#0a0b0d;
+    --calm:#37d67a; --focused:#35c5e8; --stressed:#ff9f1c; --tired:#ff4d4d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Titillium Web',sans-serif;padding:18px}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .disp{font-family:'Chakra Petch',sans-serif}
+  header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:16px}
+  .bolt{width:6px;height:40px;background:var(--red);box-shadow:0 0 14px var(--red);transform:skewX(-12deg)}
+  .eyebrow{color:var(--red);font-size:10px;letter-spacing:2.5px;font-family:'Chakra Petch',sans-serif;font-weight:600}
+  .title{font-size:24px;font-weight:700;font-family:'Chakra Petch',sans-serif;font-style:italic;line-height:1.05;margin-top:2px}
+  .session{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{display:flex;flex-direction:column;gap:2px;padding:6px 11px;border:1px solid var(--line);background:var(--panel)}
+  .chip .k{color:var(--mute);font-size:9px;letter-spacing:1px}
+  .chip .v{color:var(--ink);font-size:12px;font-family:'JetBrains Mono',monospace}
+  .badge{display:flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);font-size:11px;letter-spacing:1px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .grid{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:16px;align-items:start}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .col{background:var(--panel);border:1px solid var(--line)}
+  .colhead{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);font-family:'Chakra Petch',sans-serif;font-size:12px;letter-spacing:1.5px}
+  .radiolist{display:flex;flex-direction:column;max-height:560px;overflow-y:auto}
+  .radioitem{text-align:left;padding:11px 14px;border-left:2px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;background:transparent;color:var(--ink)}
+  .radioitem:hover{background:rgba(255,255,255,.02)}
+  .radioitem .row{display:flex;justify-content:space-between;align-items:center}
+  .laptag{font-family:'JetBrains Mono',monospace;font-size:12px}
+  .rtext{font-size:13px;margin-top:6px;line-height:1.35;color:var(--mute)}
+  .rmood{font-size:9px;letter-spacing:1.5px;margin-top:6px;font-family:'Chakra Petch',sans-serif}
+  main{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .player{background:var(--panel);border:1px solid var(--line);padding:18px}
+  .ptop{display:flex;justify-content:space-between;align-items:flex-start}
+  .transcript{font-size:19px;line-height:1.4;margin-top:8px;max-width:560px;font-style:italic;max-height:120px;overflow-y:auto;padding-right:6px;word-break:break-word}
+  .moodbig{font-size:22px;font-weight:700;font-family:'Chakra Petch',sans-serif;letter-spacing:1px;margin-top:2px}
+  .moodsub{color:var(--mute);font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:2px}
+  .wavewrap{display:flex;align-items:center;gap:12px;margin-top:18px}
+  .play{width:38px;height:38px;flex-shrink:0;border-radius:50%;border:1px solid var(--line);background:#0c0d10;color:var(--ink);cursor:pointer;font-size:13px}
+  .play:hover{border-color:var(--red)}
+  .wave{flex:1;height:46px;display:flex;align-items:center;gap:2px;overflow:hidden}
+  .wave span{flex:1;min-width:1px;border-radius:1px;align-self:center}
+  .chartcard{background:var(--panel);border:1px solid var(--line);padding-bottom:4px}
+  .chartwrap{position:relative;padding:6px}
+  .finding{position:absolute;top:12px;left:16px;z-index:5;max-width:260px;background:rgba(10,11,13,.82);border:1px solid var(--line);border-left:2px solid var(--red);padding:8px 11px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+  .stat{padding:12px 14px;border-right:1px solid var(--line)}
+  .stat .k{color:var(--mute);font-size:9px;letter-spacing:1px}
+  .stat .v{font-size:16px;font-family:'JetBrains Mono',monospace;font-weight:700;margin-top:3px}
+  .footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+  .stintbtn{background:#0c0d10;color:var(--ink);border:1px solid var(--line);padding:9px 16px;cursor:pointer;font-family:'Chakra Petch',sans-serif;letter-spacing:1.5px;font-size:12px}
+  .stintbtn:hover{border-color:var(--red)}
+  text{font-family:'JetBrains Mono',monospace}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#23262e}
+
+  /* per-driver dashboard panel */
+  .dash{margin-bottom:26px}
+  .dashhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .dashtag{font-family:'Chakra Petch',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--ink);
+    border-left:3px solid var(--red);padding-left:10px}
+
+  /* ---- LIVE CONTROL panel ---- */
+  .control{background:var(--panel);border:1px solid var(--line);margin-bottom:16px}
+  .ctlbody{padding:14px}
+  .ctlgroup{margin-bottom:14px}
+  .ctltitle{color:var(--mute);font-size:9px;letter-spacing:1.5px;font-family:'Chakra Petch',sans-serif;margin-bottom:8px}
+  .fields{display:flex;flex-wrap:wrap;gap:10px}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field span{color:var(--mute);font-size:9px;letter-spacing:1px}
+  .field input,.field select{background:#0c0d10;border:1px solid var(--line);color:var(--ink);
+    font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 9px;min-width:64px}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--focused)}
+  .field.grow{flex:1;min-width:230px}
+  .field.grow input{width:100%}
+  .voicebar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
+    padding:12px;background:#0c0d10;border:1px dashed var(--line)}
+  .btn{background:#14161b;color:var(--ink);border:1px solid var(--line);
+    font-family:'Chakra Petch',sans-serif;letter-spacing:1px;font-size:11px;
+    padding:8px 14px;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--focused)}
+  .btn.rec{color:var(--tired)}
+  .btn.rec.on{background:var(--tired);color:#111;border-color:var(--tired);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.55}}
+  .btn.import{background:#1a1200;border-color:#ffcf3f;color:#ffcf3f}
+  .btn.import:hover{background:#241a00}
+  .btn.import:disabled{opacity:.5;cursor:not-allowed}
+  .btn.run{background:var(--red);border-color:var(--red);color:#fff;font-size:12px;padding:10px 20px}
+  .btn.run:hover{filter:brightness(1.12)}
+  .btn.run:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  .btn.mini{padding:4px 9px;font-size:10px}
+  .hint{color:var(--mute);font-size:11px}
+  .cliptable{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .cliprow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:8px 11px;background:#0c0d10;border:1px solid var(--line);font-size:12px}
+  .cliprow .lap{font-family:'JetBrains Mono',monospace;color:var(--focused)}
+  .cliprow .fn{color:var(--mute);font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .runline{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+  .status{font-size:11px;font-family:'JetBrains Mono',monospace}
+  .status.ok{color:var(--calm)} .status.err{color:var(--tired)} .status.busy{color:var(--stressed)}
+
+  /* mode toggle */
+  .modeseg{display:inline-flex;border:1px solid var(--line);background:#0c0d10}
+  .modeseg button{background:transparent;color:var(--mute);border:none;padding:7px 14px;cursor:pointer;
+    font-family:'Chakra Petch',sans-serif;letter-spacing:1px;font-size:11px}
+  .modeseg button.on{background:var(--red);color:#fff}
+
+  /* ---- analysis loading overlay ---- */
+  .overlay{position:fixed;inset:0;background:rgba(6,7,9,.86);z-index:50;
+    display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+  .overlay.on{display:flex}
+  .spinner{width:46px;height:46px;border:3px solid var(--line);border-top-color:var(--red);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ovtext{font-family:'Chakra Petch',sans-serif;letter-spacing:1.5px;font-size:14px}
+  .ovsub{color:var(--mute);font-size:12px;font-family:'JetBrains Mono',monospace}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="bolt"></div>
+    <div>
+      <div class="eyebrow">AI RACE MONTH · PROBLEM 01</div>
+      <div class="title">THE SILENT CO&#8209;DRIVER</div>
+    </div>
+  </div>
+  <div class="session" id="session"></div>
+</header>
+
+<section class="control" id="control" style="display:none">
+  <div class="colhead"><span>LIVE CONTROL · SESSION &amp; VOICE</span><span id="clipcount" style="color:var(--mute)"></span></div>
+  <div class="ctlbody">
+    <div class="ctlgroup">
+      <div class="ctltitle">ANALYSE</div>
+      <div class="modeseg" id="modeseg">
+        <button data-mode="driver" class="on">ONE DRIVER</button>
+        <button data-mode="team">WHOLE TEAM</button>
+      </div>
+    </div>
+
+    <div class="ctlgroup">
+      <div class="ctltitle">SESSION — REAL LAP TIMES FROM FASTF1</div>
+      <div class="fields">
+        <label class="field"><span>YEAR</span><select id="cfg-year"><option>2020</option></select></label>
+        <label class="field grow"><span>GRAND PRIX</span><select id="cfg-gp"><option value="Turkish Grand Prix">Turkish Grand Prix</option></select></label>
+        <label class="field"><span>SESSION</span>
+          <select id="cfg-session" style="min-width:120px">
+            <option value="R">Race</option><option value="Q">Qualifying</option><option value="S">Sprint</option>
+            <option value="FP1">Practice 1</option><option value="FP2">Practice 2</option><option value="FP3">Practice 3</option>
+          </select></label>
+        <label class="field" id="driver-field"><span>DRIVER</span><select id="cfg-driver" style="min-width:150px"><option value="HAM">HAM</option></select></label>
+        <label class="field" id="team-field" style="display:none"><span>TEAM</span><select id="cfg-team" style="min-width:190px"></select></label>
+        <label class="field"><span>FROM LAP</span><select id="cfg-from" style="min-width:78px"><option value="30">30</option></select></label>
+        <label class="field"><span>TO LAP</span><select id="cfg-to" style="min-width:78px"><option value="45">45</option></select></label>
+      </div>
+    </div>
+
+    <div class="ctlgroup">
+      <div class="ctltitle">REAL RADIO — HUGGING FACE DATASET · MikCil/f1-team-radio</div>
+      <div class="voicebar">
+        <button class="btn import" id="import-btn">⇩ IMPORT REAL RADIO</button>
+        <span class="status" id="import-status"></span>
+        <span class="hint">Pulls the real team radio, maps each clip to the lap it was sent on (FastF1), then RUN.</span>
+      </div>
+    </div>
+
+    <div class="ctlgroup" id="manual-group">
+      <div class="ctltitle">TEAM RADIO — UPLOAD OR RECORD A CLIP, MAP IT TO A LAP</div>
+      <div class="voicebar">
+        <label class="field"><span>LAP #</span><select id="up-lap" style="min-width:78px"><option value="">—</option></select></label>
+        <label class="field grow"><span>AUDIO FILE</span><input id="up-file" type="file" accept="audio/*"></label>
+        <button class="btn rec" id="up-record">● RECORD</button>
+        <button class="btn" id="up-btn">↑ ADD CLIP</button>
+        <span class="status" id="up-status"></span>
+      </div>
+      <div class="cliptable" id="cliptable"></div>
+      <div style="margin-top:10px"><button class="btn" id="clear-clips" style="color:var(--tired);border-color:#3a2326">✕ CLEAR ALL CLIPS</button></div>
+    </div>
+
+    <div class="runline">
+      <button class="btn run" id="run-btn">▶ RUN ANALYSIS</button>
+      <span class="status" id="run-status"></span>
+      <span class="hint">Laps with a clip run through Whisper + wav2vec2 + text emotion; laps without one get a neutral baseline.</span>
+    </div>
+  </div>
+</section>
+
+<div id="results"></div>
+
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <div class="ovtext" id="ovtext">RUNNING ANALYSIS</div>
+  <div class="ovsub" id="ovsub">Whisper + wav2vec2 on each clip · this can take ~60s on CPU</div>
+</div>
+
+<script>
+const MOOD = {
+  calm:{c:'var(--calm)',label:'CALM'}, focused:{c:'var(--focused)',label:'FOCUSED'},
+  stressed:{c:'var(--stressed)',label:'STRESSED'}, tired:{c:'var(--tired)',label:'TIRED'}
+};
+const RED='#e10600', INK='#e8eaed', MUTE='#7b828d', LINE='#23262e';
+const $ = id => document.getElementById(id);
+const val = id => $(id).value.trim();
+const avg = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+const fmt = s => { s = Math.max(0, s|0); return (s/60|0)+':'+String(s%60).padStart(2,'0'); };
+function bars(seed,n=56){const out=[];let x=seed*9301+49297;for(let k=0;k<n;k++){x=(x*9301+49297)%233280;const b=.25+(x/233280)*.75;const env=Math.sin((k/n)*Math.PI);out.push(Math.max(.12,b*(.55+env*.6)))}return out}
+const chip=(k,v)=>`<div class="chip"><span class="k">${k}</span><span class="v">${v||'—'}</span></div>`;
+const tyreChip=c=>`<div class="chip"><span class="k">TYRE</span><span class="v" style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;border-radius:50%;border:2px solid #eaeaea"></span>${c||'HARD'}</span></div>`;
+
+let MODE = 'driver';   // 'driver' | 'team'
+
+/* =========================================================================
+   Dashboard component — one full per-driver analysis (radio list, player,
+   chart, stats). Rendered once in Driver mode, twice in Team mode.
+   ========================================================================= */
+const DASH_TPL = `
+  <div class="dashhead"><div class="dashtag"></div><div class="session"></div></div>
+  <div class="grid">
+    <aside class="col">
+      <div class="colhead"><span>TEAM RADIO</span><span class="radiocount" style="color:var(--mute)"></span></div>
+      <div class="radiolist"></div>
+    </aside>
+    <main>
+      <section class="player">
+        <div class="ptop">
+          <div><div class="eyebrow cliplabel">RADIO CLIP</div><div class="transcript">—</div></div>
+          <div style="text-align:right;flex-shrink:0;margin-left:16px"><div class="eyebrow">TONE</div><div class="moodbig">—</div><div class="moodsub"></div></div>
+        </div>
+        <div class="wavewrap"><button class="play">▶</button><div class="wave"></div><span class="mono dur" style="color:var(--mute);font-size:11px">0:00 / 0:00</span></div>
+        <audio preload="metadata" style="display:none"></audio>
+      </section>
+      <section class="chartcard">
+        <div class="colhead"><span>STRESS vs LAP TIME</span><span style="color:var(--mute);font-size:11px">higher line = slower lap ▲</span></div>
+        <div class="chartwrap"><div class="finding" style="display:none"></div><div class="chart"></div></div>
+        <div class="stats"></div>
+      </section>
+      <div class="footer">
+        <div style="color:var(--mute);font-size:12px">Driver's in-car voice isolated · Whisper → transcript · wav2vec2 (voice) + DistilRoBERTa (words) → fused tone.</div>
+        <button class="stintbtn">▶ PLAY FULL STINT</button>
+      </div>
+    </main>
+  </div>`;
+
+let DASHBOARDS = [];
+
+function makeDashboard(container, data){
+  const root = document.createElement('div');
+  root.className = 'dash';
+  root.innerHTML = DASH_TPL;
+  container.appendChild(root);
+  const q = s => root.querySelector(s);
+  const st = { laps:data.laps||[], meta:data.meta||{}, clipsDir:data.clipsDir||'clips',
+               audioVersion:data.audioVersion||Date.now(), sel:0, head:0, wf:[] };
+  const audio = q('audio');
+  let stintTimer=null, stintOrder=[], stintPos=0;
+
+  const radioLaps = () => st.laps.filter(d=>d.radio);
+  function selectFirst(){ const rl=radioLaps(); const hot=rl.find(d=>d.mood==='stressed'||d.mood==='tired')||rl[0]; st.sel=st.laps.indexOf(hot); if(st.sel<0)st.sel=0; }
+  function currentClipUrl(){ const cur=st.laps[st.sel]; return (cur&&cur.radio) ? (location.origin+'/api/clips/'+cur.lap+'/audio?v='+st.audioVersion+'&clips_dir='+encodeURIComponent(st.clipsDir)) : null; }
+
+  function badge(){ const ready=st.laps.length>0; const c=ready?'var(--calm)':'var(--stressed)'; const t=ready?'ANALYSED':'IDLE'; return `<div class="badge"><span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span>${t}</div>`; }
+  function renderSession(){ const m=st.meta; q('.dashtag').textContent = (m.driver||'—') + (m.team?(' · '+m.team):''); q('.session').innerHTML = chip('DRIVER',m.driver)+chip('TEAM',m.team)+tyreChip(m.compound)+chip('STINT',m.stint)+badge(); }
+
+  function renderRadio(){
+    const rl=radioLaps(); q('.radiocount').textContent = rl.length+' CALLS';
+    q('.radiolist').innerHTML = rl.map(d=>{ const i=st.laps.indexOf(d), on=i===st.sel, m=MOOD[d.mood];
+      return `<button class="radioitem" data-i="${i}" style="${on?`border-left-color:${m.c};background:rgba(255,255,255,.03)`:''}">
+        <div class="row"><span class="laptag">LAP ${d.lap}</span><span class="dot" style="background:${m.c};box-shadow:0 0 8px ${m.c}"></span></div>
+        <div class="rtext" style="${on?'color:'+INK:''}">${d.radio}</div>
+        <div class="rmood" style="color:${m.c}">${m.label}</div></button>`; }).join('');
+    root.querySelectorAll('.radioitem').forEach(b=>b.onclick=()=>pick(+b.dataset.i));
+  }
+
+  function renderClip(){
+    const cur=st.laps[st.sel];
+    if(!cur){ q('.cliplabel').textContent='RADIO CLIP'; q('.transcript').textContent='—';
+      const mb=q('.moodbig'); mb.textContent='—'; mb.style.color=''; q('.moodsub').textContent=''; q('.wave').innerHTML=''; loadAudio(); return; }
+    const m=MOOD[cur.mood];
+    q('.cliplabel').textContent=`RADIO CLIP · LAP ${cur.lap}`;
+    q('.transcript').textContent = cur.radio? `“${cur.radio}”` : '— no radio this lap —';
+    const mb=q('.moodbig'); mb.textContent=m.label; mb.style.color=m.c;
+    q('.moodsub').textContent = cur.tone ? `driver voice: ${cur.tone} · ${cur.confidence}% sure` : 'confidence '+(50+Math.round(cur.stress/2.2))+'%';
+    st.head=0; renderWave(); loadAudio();
+  }
+
+  function renderWave(){ const cur=st.laps[st.sel]; if(!cur) return; st.wf=bars(cur.lap); const m=MOOD[cur.mood];
+    q('.wave').innerHTML = st.wf.map((h,k)=>`<span style="height:${h*100}%;background:${k<=st.head?m.c:'#2c3038'};opacity:${k<=st.head?1:.7}"></span>`).join(''); }
+
+  function renderChart(){
+    const L=st.laps; if(!L.length){ q('.chart').innerHTML=''; q('.finding').style.display='none'; return; }
+    const W=720,H=252,padL=10,padR=44,padT=22,padB=24, plotH=H-padT-padB, plotW=W-padL-padR;
+    const lapMin=L[0].lap, lapMax=L[L.length-1].lap, span=Math.max(1,lapMax-lapMin);
+    const ts=L.map(d=>d.t), tMin=Math.min(...ts)-0.2, tMax=Math.max(...ts)+0.2;
+    const X=d=>padL+((d.lap-lapMin)/span)*plotW;
+    const Yt=t=>padT+(1-(t-tMin)/(tMax-tMin))*plotH;
+    const Ys=s=>padT+plotH-(s/100)*plotH;
+    const baseY=padT+plotH;
+    const area='M '+X(L[0])+' '+baseY+' '+L.map(d=>'L '+X(d)+' '+Ys(d.stress)).join(' ')+' L '+X(L[L.length-1])+' '+baseY+' Z';
+    const line=L.map((d,i)=>(i?'L':'M')+' '+X(d)+' '+Yt(d.t)).join(' ');
+    const cur=st.laps[st.sel]||L[0]; const m=MOOD[cur.mood];
+    let grid='';
+    for(let g=0;g<=3;g++){const y=padT+(g/3)*plotH;grid+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${LINE}"/>`;}
+    const xl=L.filter((d,i)=>i%2===0).map(d=>`<text x="${X(d)}" y="${H-8}" fill="${MUTE}" font-size="11" text-anchor="middle">${d.lap}</text>`).join('');
+    const yl=[tMin,(tMin+tMax)/2,tMax].map(t=>`<text x="${W-padR+6}" y="${Yt(t)+4}" fill="${MUTE}" font-size="11">${t.toFixed(1)}</text>`).join('');
+    const hot=L.find(d=>d.mood==='stressed'||d.mood==='tired');
+    const zone = hot? `<rect x="${X(hot)}" y="${padT}" width="${(W-padR)-X(hot)}" height="${plotH}" fill="${RED}" opacity="0.05"/><text x="${W-padR-6}" y="${padT+12}" fill="${MUTE}" font-size="10" text-anchor="end" font-family="Chakra Petch">TYRE CLIFF</text>`:'';
+    const dots=L.map(d=>`<circle cx="${X(d)}" cy="${Yt(d.t)}" r="${d.lap===cur.lap?4:2}" fill="${d.lap===cur.lap?RED:INK}" stroke="#000"/>`).join('');
+    const marker=`<line x1="${X(cur)}" y1="${padT}" x2="${X(cur)}" y2="${baseY}" stroke="${m.c}" stroke-dasharray="3 3"/>`;
+    q('.chart').innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+        <defs><linearGradient id="st-${st.clipsDir.replace(/[^a-z0-9]/gi,'')}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${RED}" stop-opacity="0.34"/><stop offset="100%" stop-color="${RED}" stop-opacity="0.02"/>
+        </linearGradient></defs>
+        ${grid}${zone}
+        <path d="${area}" fill="url(#st-${st.clipsDir.replace(/[^a-z0-9]/gi,'')})" stroke="${RED}" stroke-width="1.5"/>
+        ${marker}<path d="${line}" fill="none" stroke="${INK}" stroke-width="2.5"/>${dots}${xl}${yl}
+      </svg>`;
+    const fi=L.findIndex(d=>d.mood==='stressed'||d.mood==='tired');
+    const el=q('.finding');
+    if(fi>=0 && L[fi+1]){ const jump=(L[fi+1].t-L[fi].t).toFixed(1); el.style.display='block';
+      el.innerHTML=`<div class="disp" style="color:${RED};font-size:10px;letter-spacing:1.5px">▲ THE MOMENT</div>
+        <div style="font-size:13px;color:${INK};margin-top:2px;line-height:1.3">First stress call, <b>Lap ${L[fi].lap}</b>. Next lap: <b style="color:${RED}">${jump>=0?'+':''}${jump}s</b>. The tyre never recovered.</div>`;
+    } else { el.style.display='none'; }
+  }
+
+  function renderStats(){
+    const L=st.laps;
+    const calm=avg(L.filter(d=>d.mood==='calm'||d.mood==='focused').map(d=>d.t));
+    const hot=avg(L.filter(d=>d.mood==='stressed'||d.mood==='tired').map(d=>d.t));
+    const trig=L.find(d=>d.mood==='stressed'||d.mood==='tired');
+    const s=(k,v,c)=>`<div class="stat"><div class="k">${k}</div><div class="v" style="color:${c}">${v}</div></div>`;
+    q('.stats').innerHTML = s('CALM AVG',calm?calm.toFixed(2)+'s':'—','var(--calm)')+s('STRESSED AVG',hot?hot.toFixed(2)+'s':'—','var(--stressed)')+
+      s('PACE LOST',(hot&&calm)?'+'+(hot-calm).toFixed(2)+'s / lap':'—',RED)+s('TRIGGER',trig?'LAP '+trig.lap+' RADIO':'—',INK);
+  }
+
+  function renderAll(){ renderSession(); renderRadio(); renderClip(); renderChart(); renderStats(); }
+
+  // ---- audio ----
+  function setPlayIcon(on){ q('.play').textContent = on?'❚❚':'▶'; }
+  function updateDur(){ const d=isFinite(audio.duration)?audio.duration:0; q('.dur').textContent = fmt(audio.currentTime||0)+' / '+fmt(d); }
+  function loadAudio(){ const url=currentClipUrl(); const play=q('.play'); audio.pause();
+    if(url){ audio.src=url; audio.load(); play.disabled=false; play.style.opacity=1; } else { audio.removeAttribute('src'); play.disabled=true; play.style.opacity=.4; }
+    setPlayIcon(false); updateDur(); }
+  function playCurrent(){ if(!currentClipUrl()) return; DASHBOARDS.forEach(d=>{ if(d.root!==root) d.pause(); }); audio.play().catch(()=>{}); }
+  audio.addEventListener('play', ()=>setPlayIcon(true));
+  audio.addEventListener('pause', ()=>setPlayIcon(false));
+  audio.addEventListener('loadedmetadata', updateDur);
+  audio.addEventListener('timeupdate', ()=>{ const n=st.wf?.length||56; if(audio.duration>0){ st.head=Math.floor((audio.currentTime/audio.duration)*(n-1)); renderWave(); } updateDur(); });
+  audio.addEventListener('ended', ()=>{ setPlayIcon(false); st.head=(st.wf?.length||56)-1; renderWave(); if(stintTimer) stintNext(); });
+  q('.play').onclick = ()=>{ if(!currentClipUrl()) return; if(audio.paused){ DASHBOARDS.forEach(d=>{ if(d.root!==root) d.pause(); }); audio.play().catch(()=>{}); } else audio.pause(); };
+
+  // ---- full-stint playback ----
+  function stopStint(){ stintTimer=null; stintOrder=[]; q('.stintbtn').textContent='▶ PLAY FULL STINT'; }
+  function stintNext(){ if(!stintTimer) return; stintPos++; if(stintPos>=stintOrder.length){ stopStint(); return; } st.sel=stintOrder[stintPos]; renderRadio(); renderClip(); renderChart(); playCurrent(); }
+  q('.stintbtn').onclick=()=>{ if(stintTimer){ stopStint(); audio.pause(); return; } stintOrder=radioLaps().map(d=>st.laps.indexOf(d)); if(!stintOrder.length) return;
+    stintPos=Math.max(0,stintOrder.indexOf(st.sel)); stintTimer=true; q('.stintbtn').textContent='■ STOP STINT'; st.sel=stintOrder[stintPos]; renderRadio(); renderClip(); renderChart(); playCurrent(); };
+
+  function pick(i){ st.sel=i; renderRadio(); renderClip(); renderChart(); playCurrent(); }
+
+  selectFirst(); renderAll();
+  return { root, pause(){ stopStint(); audio.pause(); } };
+}
+
+function renderResults(items){
+  DASHBOARDS.forEach(d=>d.pause());
+  DASHBOARDS = [];
+  const box = $('results'); box.innerHTML='';
+  items.forEach(it=> DASHBOARDS.push(makeDashboard(box, it)) );
+}
+
+/* =========================================================================
+   LIVE CONTROL — catalog dropdowns, clips, import + run (mode-aware)
+   ========================================================================= */
+function setRunStatus(m,c){const e=$('run-status');e.textContent=m;e.className='status '+(c||'');}
+function setUpStatus(m,c){const e=$('up-status');e.textContent=m;e.className='status '+(c||'');}
+function setImportStatus(m,c){const e=$('import-status');e.textContent=m;e.className='status '+(c||'');}
+function showOverlay(on,text){ $('overlay').classList.toggle('on',on); if(text)$('ovtext').textContent=text; }
+function fillLapSelect(id,min,max,sel){ let h=''; for(let n=min;n<=max;n++) h+=`<option value="${n}">${n}</option>`; const e=$(id); e.innerHTML=h||'<option value="">—</option>'; if(sel!=null && e.querySelector(`option[value="${sel}"]`)) e.value=String(sel); }
+
+let CATALOG = {years:[], by_year:{}};
+const gpDatasetName = () => { const o=$('cfg-gp').selectedOptions[0]; return o ? (o.dataset.gp || (val('cfg-year')+' '+o.value)) : ''; };
+
+async function loadCatalog(){
+  try{
+    CATALOG = await (await fetch(location.origin+'/api/dataset/catalog')).json();
+    $('cfg-year').innerHTML = CATALOG.years.map(y=>`<option>${y}</option>`).join('');
+    $('cfg-year').value = CATALOG.years.includes('2020')?'2020':CATALOG.years[0];
+    populateGPs();
+  }catch(e){ setImportStatus('could not load dataset catalog: '+e.message,'err'); }
+}
+async function populateGPs(){
+  const y=val('cfg-year'); const gps=CATALOG.by_year[y]||[]; const g=$('cfg-gp'); const prev=g.value;
+  g.innerHTML = gps.map(x=>`<option value="${x.name}" data-gp="${x.dataset_gp}">${x.name} · ${x.count} clips</option>`).join('');
+  if(gps.some(x=>x.name===prev)) g.value=prev; else if(gps.some(x=>x.name==='Turkish Grand Prix')) g.value='Turkish Grand Prix';
+  await populateSessions();
+  MODE==='team' ? populateTeams() : populateDrivers();
+}
+
+// only offer sessions of this GP that actually have radio (bucketed by timestamp)
+async function populateSessions(){
+  const s=$('cfg-session'); const prev=s.value;
+  s.innerHTML='<option>…</option>'; s.disabled=true;
+  try{
+    const r = await (await fetch(location.origin+`/api/dataset/sessions?year=${+val('cfg-year')}&gp=${encodeURIComponent(val('cfg-gp'))}`)).json();
+    const list = r.sessions || [];
+    s.innerHTML = list.map(x=>`<option value="${x.code}">${x.name} · ${x.count} clips</option>`).join('') || '<option value="R">Race</option>';
+    if(list.some(x=>x.code==='R')) s.value='R';
+    else if(list.some(x=>x.code===prev)) s.value=prev;
+  }catch(e){ s.innerHTML='<option value="R">Race</option>'; }
+  finally{ s.disabled=false; }
+}
+async function populateDrivers(){
+  const d=$('cfg-driver'); const gp=gpDatasetName(); if(!gp) return;
+  d.innerHTML='<option>loading drivers…</option>'; d.disabled=true; gate(false);
+  setImportStatus('loading drivers for this Grand Prix…','busy');
+  try{
+    const r = await (await fetch(location.origin+'/api/dataset/drivers?gp='+encodeURIComponent(gp))).json();
+    const drivers=r.drivers||[];
+    d.innerHTML = drivers.map(x=>`<option value="${x.abbr}">#${x.racing_number} ${x.abbr} · ${x.count} clips</option>`).join('') || '<option value="">no drivers</option>';
+    if([...d.options].some(o=>o.value==='HAM')) d.value='HAM';
+    setImportStatus(`${drivers.length} drivers available — pick one, then IMPORT`,'ok');
+  }catch(e){ d.innerHTML='<option value="HAM">HAM</option>'; setImportStatus('could not load drivers: '+e.message,'err'); }
+  finally{ d.disabled=false; gate(true); }
+}
+let TEAMS = [];
+async function populateTeams(){
+  const t=$('cfg-team'); t.innerHTML='<option>loading teams…</option>'; t.disabled=true; gate(false);
+  setImportStatus('loading teams for this Grand Prix…','busy');
+  try{
+    const r = await (await fetch(location.origin+`/api/dataset/teams?year=${+val('cfg-year')}&gp=${encodeURIComponent(val('cfg-gp'))}&session=${encodeURIComponent(val('cfg-session'))}`)).json();
+    TEAMS = (r.teams||[]).filter(tm=>tm.drivers.length>=2);   // need two drivers to compare
+    t.innerHTML = TEAMS.map((tm,i)=>`<option value="${i}">${tm.team} · ${tm.drivers.slice(0,2).map(d=>d.abbr).join(' + ')}</option>`).join('') || '<option value="">no full teams</option>';
+    setImportStatus(`${TEAMS.length} teams available — pick one, then IMPORT`,'ok');
+  }catch(e){ t.innerHTML='<option value="">teams unavailable</option>'; setImportStatus('could not load teams: '+e.message,'err'); }
+  finally{ t.disabled=false; gate(true); }
+}
+function gate(on){ $('import-btn').disabled=!on; $('run-btn').disabled=!on; }
+function currentTeam(){ return TEAMS[+val('cfg-team')] || null; }
+function teamDrivers(){ const tm=currentTeam(); return tm ? tm.drivers.slice(0,2) : []; }
+const clipsDirFor = abbr => 'clips/'+abbr;
+
+// ---- clips (driver mode, 'clips' dir) ----
+async function refreshClips(){
+  try{
+    const rows = (await (await fetch(location.origin+'/api/clips')).json()).clips || [];
+    $('clipcount').textContent = rows.length + (rows.length===1?' CLIP':' CLIPS');
+    $('cliptable').innerHTML = rows.length ? rows.map(c=>
+      `<div class="cliprow"><span class="lap">LAP ${c.lap}</span><span class="fn">${c.file}</span><button class="btn mini" data-lap="${c.lap}">✕ REMOVE</button></div>`).join('')
+      : `<div class="hint">No clips yet — import above, or add one manually.</div>`;
+    $('cliptable').querySelectorAll('button[data-lap]').forEach(b=>b.onclick=()=>deleteClip(+b.dataset.lap));
+  }catch(e){}
+}
+async function deleteClip(lap){ await fetch(location.origin+'/api/clips/'+lap,{method:'DELETE'}); refreshClips(); }
+async function clearClips(){
+  const b=$('clear-clips'); b.disabled=true; DASHBOARDS.forEach(d=>d.pause());
+  try{ const d=await (await fetch(location.origin+'/api/clips',{method:'DELETE'})).json();
+    $('results').innerHTML=''; DASHBOARDS=[]; setImportStatus(`cleared ${(d.removed||[]).length} clips`,'ok');
+    setRunStatus('no clips loaded — import, then RUN ANALYSIS','busy'); refreshClips();
+  }catch(e){ setImportStatus('clear failed: '+e.message,'err'); } finally{ b.disabled=false; }
+}
+async function uploadClip(){
+  const lap=+val('up-lap'); const fi=$('up-file'); let file=fi.files[0];
+  if(!file && recBlob) file=new File([recBlob],`lap${lap||0}.webm`,{type:'audio/webm'});
+  if(!lap){ setUpStatus('enter a lap number first','err'); return; }
+  if(!file){ setUpStatus('pick a file or record a clip','err'); return; }
+  setUpStatus('uploading…','busy'); const fd=new FormData(); fd.append('lap',lap); fd.append('file',file);
+  try{ const d=await (await fetch(location.origin+'/api/clips',{method:'POST',body:fd})).json();
+    if(d.detail) throw new Error(d.detail); setUpStatus(`added ${d.file}`,'ok');
+    fi.value=''; recBlob=null; $('up-record').classList.remove('on'); $('up-record').textContent='● RECORD'; refreshClips();
+  }catch(e){ setUpStatus('upload failed: '+e.message,'err'); }
+}
+let mediaRecorder=null, recChunks=[], recBlob=null;
+async function toggleRecord(){
+  const btn=$('up-record');
+  if(mediaRecorder && mediaRecorder.state==='recording'){ mediaRecorder.stop(); return; }
+  try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); recChunks=[]; recBlob=null;
+    mediaRecorder=new MediaRecorder(stream);
+    mediaRecorder.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
+    mediaRecorder.onstop=()=>{ recBlob=new Blob(recChunks,{type:'audio/webm'}); stream.getTracks().forEach(t=>t.stop()); btn.classList.remove('on'); btn.textContent='● RECORDED ✓'; setUpStatus('recorded — set a lap # and ADD CLIP','ok'); };
+    mediaRecorder.start(); btn.classList.add('on'); btn.textContent='■ STOP'; setUpStatus('recording… click STOP when done','busy');
+  }catch(e){ setUpStatus('mic unavailable: '+e.message,'err'); }
+}
+
+// ---- import a single driver into a clips dir; returns the import result ----
+async function importOne(driver, clipsDir){
+  const body = { year:+val('cfg-year'), gp:val('cfg-gp'), session:val('cfg-session'), driver, lap_from:1, lap_to:99, limit:40, clips_dir:clipsDir };
+  const r = await fetch(location.origin+'/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d = await r.json(); if(!r.ok) throw new Error(d.detail||r.status); return d;
+}
+async function importRadio(){
+  gate(false); DASHBOARDS.forEach(d=>d.pause()); showOverlay(true,'IMPORTING REAL RADIO · HUGGING FACE');
+  try{
+    if(MODE==='team'){
+      const drs=teamDrivers(); if(drs.length<2) throw new Error('pick a team with two drivers');
+      setImportStatus(`importing radio for ${drs.map(d=>d.abbr).join(' + ')}…`,'busy');
+      let rng=null, total=0;
+      for(const dr of drs){ const d=await importOne(dr.abbr, clipsDirFor(dr.abbr)); total+=d.imported.length; rng=rng||[d.race_lap_min,d.race_lap_max]; }
+      fillLapSelect('cfg-from',rng[0],rng[1],rng[0]); fillLapSelect('cfg-to',rng[0],rng[1],rng[1]);
+      $('results').innerHTML=''; DASHBOARDS=[];
+      setImportStatus(`imported ${total} clips for ${currentTeam().team} — now RUN ANALYSIS`,'ok');
+    } else {
+      setImportStatus('importing real radio from Hugging Face…','busy');
+      const d=await importOne(val('cfg-driver'),'clips');
+      const laps=d.imported.map(c=>c.lap); const rmin=d.race_lap_min||Math.min(...laps), rmax=d.race_lap_max||Math.max(...laps);
+      fillLapSelect('cfg-from',rmin,rmax,Math.min(...laps)); fillLapSelect('cfg-to',rmin,rmax,Math.max(...laps)); fillLapSelect('up-lap',rmin,rmax,Math.min(...laps));
+      $('results').innerHTML=''; DASHBOARDS=[];
+      setImportStatus(`imported ${d.imported.length} clips (laps ${Math.min(...laps)}–${Math.max(...laps)}) · ${d.dataset_gp} · #${d.number} — now RUN ANALYSIS`,'ok');
+      refreshClips();
+    }
+  }catch(e){ setImportStatus('import failed: '+e.message,'err'); }
+  finally{ showOverlay(false); gate(true); }
+}
+
+async function analyzeOne(driver, clipsDir, lo, hi){
+  const body={ year:+val('cfg-year'), gp:val('cfg-gp'), session:val('cfg-session'), driver, lap_from:lo, lap_to:hi, clips_dir:clipsDir };
+  const r=await fetch(location.origin+'/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json(); if(!r.ok) throw new Error(d.detail||r.status); return d;
+}
+async function runAnalysis(){
+  let lo=+val('cfg-from'), hi=+val('cfg-to'); if(lo>hi)[lo,hi]=[hi,lo];
+  gate(false); DASHBOARDS.forEach(d=>d.pause()); setRunStatus('running…','busy');
+  const ver=Date.now();
+  try{
+    if(MODE==='team'){
+      const drs=teamDrivers(); if(drs.length<2) throw new Error('pick a team with two drivers');
+      const items=[];
+      for(let i=0;i<drs.length;i++){ const dr=drs[i];
+        showOverlay(true,`ANALYSING ${dr.abbr} (${i+1}/${drs.length})`);
+        const d=await analyzeOne(dr.abbr, clipsDirFor(dr.abbr), lo, hi);
+        items.push({laps:d.laps, meta:d.meta, clipsDir:clipsDirFor(dr.abbr), audioVersion:ver});
+      }
+      renderResults(items);
+      setRunStatus(`done — ${currentTeam().team}: ${drs.map(d=>d.abbr).join(' vs ')}`,'ok');
+    } else {
+      showOverlay(true,'RUNNING ANALYSIS');
+      const d=await analyzeOne(val('cfg-driver'),'clips',lo,hi);
+      renderResults([{laps:d.laps, meta:d.meta, clipsDir:'clips', audioVersion:ver}]);
+      const withRadio=d.laps.filter(l=>l.radio).length;
+      setRunStatus(`done — ${d.laps.length} laps, ${withRadio} analysed from radio`,'ok');
+    }
+    renderHeader();
+  }catch(e){ setRunStatus('analysis failed: '+e.message,'err'); }
+  finally{ showOverlay(false); gate(true); }
+}
+
+function renderHeader(){
+  const ready = DASHBOARDS.length>0;
+  const c=ready?'var(--calm)':'var(--stressed)', t=ready?'LIVE API':'LIVE · IDLE';
+  const ctx = MODE==='team' ? (currentTeam()?currentTeam().team:'TEAM') : val('cfg-driver');
+  $('session').innerHTML = chip('MODE', MODE==='team'?'TEAM':'DRIVER')+chip(MODE==='team'?'TEAM':'DRIVER', ctx)+
+    chip('GP', val('cfg-gp'))+`<div class="badge"><span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span>${t}</div>`;
+}
+
+function setMode(m){
+  MODE=m;
+  document.querySelectorAll('#modeseg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  $('driver-field').style.display = m==='driver'?'':'none';
+  $('team-field').style.display   = m==='team'?'':'none';
+  $('manual-group').style.display = m==='driver'?'':'none';   // per-dir clip tools only make sense for one driver
+  $('import-btn').textContent = m==='team' ? '⇩ IMPORT BOTH DRIVERS' : '⇩ IMPORT REAL RADIO';
+  $('run-btn').textContent    = m==='team' ? '▶ RUN TEAM ANALYSIS'   : '▶ RUN ANALYSIS';
+  $('results').innerHTML=''; DASHBOARDS=[];
+  setRunStatus(m==='team'?'pick a team, IMPORT BOTH DRIVERS, then RUN':'configure, IMPORT, then RUN','busy');
+  m==='team' ? populateTeams() : populateDrivers();
+  renderHeader();
+}
+
+async function load(){
+  $('control').style.display='block';
+  setRunStatus('configure the session, import radio, then RUN ANALYSIS','busy');
+  renderHeader();
+  loadCatalog();
+  refreshClips();
+}
+
+// wiring
+document.querySelectorAll('#modeseg button').forEach(b=> b.onclick=()=>setMode(b.dataset.mode));
+$('cfg-year').onchange = ()=>{ DASHBOARDS.forEach(d=>d.pause()); populateGPs(); renderHeader(); };
+$('cfg-gp').onchange   = async ()=>{ DASHBOARDS.forEach(d=>d.pause()); await populateSessions(); MODE==='team'?populateTeams():populateDrivers(); renderHeader(); };
+$('cfg-session').onchange = ()=>{ if(MODE==='team') populateTeams(); };
+$('cfg-driver').onchange = renderHeader;
+$('cfg-team').onchange = renderHeader;
+$('import-btn').onclick = importRadio;
+$('clear-clips').onclick = clearClips;
+$('up-btn').onclick = uploadClip;
+$('up-record').onclick = toggleRecord;
+$('run-btn').onclick = runAnalysis;
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Pit Wall — The Silent Co-Driver. The app is live-only; all of these are needed.
+
+# --- web API ---
+fastapi
+uvicorn[standard]
+pydantic>=2
+python-multipart          # audio-clip uploads (multipart/form-data)
+
+# --- Hugging Face inference (ASR + speech-emotion) ---
+transformers
+torch                     # CPU build is fine: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# --- real F1 lap data + audio ---
+fastf1                    # official lap times + absolute lap start times (pulls pandas)
+numpy
+librosa                   # audio decode + driver-voice isolation (RMS / spectral flatness)
+soundfile                 # audio I/O backend for librosa
+requests

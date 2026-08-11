@@ -1,0 +1,12 @@
+.git
+.gitignore
+.fastf1cache
+.hfcache
+clips
+__pycache__
+*.pyc
+.claude
+.vscode
+.idea
+laps.csv
+*.jsx

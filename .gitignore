@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# generated / caches (large; rebuilt at runtime)
+.fastf1cache/
+.hfcache/
+laps.csv
+
+# downloaded team-radio audio — fetched at runtime from the HF dataset,
+# copyrighted F1 material, not for redistribution. Keep the folder, drop the audio.
+clips/*
+!clips/README.txt
+
+# local tooling / editor
+.claude/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
