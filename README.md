@@ -1,3 +1,15 @@
+<!-- Hugging Face Space config (ignored on GitHub; read by HF Spaces). -->
+---
+title: Pit Wall — The Silent Co-Driver
+emoji: 🏎️
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # Pit Wall — The Silent Co-Driver
 
 > Reads a Formula 1 **driver's** stress from real team radio and lines it up against their lap times — so you can *see* the moment the pressure hit and what it cost on track.

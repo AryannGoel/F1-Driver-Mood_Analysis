@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 
 COPY . .
 
+# make cache + clip dirs writable no matter which user the Space runs the container as
+RUN mkdir -p /app/.hfcache /app/.fastf1cache /app/clips && chmod -R 777 /app
+
 # writable cache locations inside the container
 ENV HF_HOME=/app/.hfcache \
     PORT=7860
