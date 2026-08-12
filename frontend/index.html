@@ -149,17 +149,13 @@
     <div class="ctlgroup">
       <div class="ctltitle">SESSION — REAL LAP TIMES FROM FASTF1</div>
       <div class="fields">
-        <label class="field"><span>YEAR</span><select id="cfg-year"><option>2020</option></select></label>
-        <label class="field grow"><span>GRAND PRIX</span><select id="cfg-gp"><option value="Turkish Grand Prix">Turkish Grand Prix</option></select></label>
-        <label class="field"><span>SESSION</span>
-          <select id="cfg-session" style="min-width:120px">
-            <option value="R">Race</option><option value="Q">Qualifying</option><option value="S">Sprint</option>
-            <option value="FP1">Practice 1</option><option value="FP2">Practice 2</option><option value="FP3">Practice 3</option>
-          </select></label>
-        <label class="field" id="driver-field"><span>DRIVER</span><select id="cfg-driver" style="min-width:150px"><option value="HAM">HAM</option></select></label>
-        <label class="field" id="team-field" style="display:none"><span>TEAM</span><select id="cfg-team" style="min-width:190px"></select></label>
-        <label class="field"><span>FROM LAP</span><select id="cfg-from" style="min-width:78px"><option value="30">30</option></select></label>
-        <label class="field"><span>TO LAP</span><select id="cfg-to" style="min-width:78px"><option value="45">45</option></select></label>
+        <label class="field"><span>YEAR</span><select id="cfg-year" autocomplete="off"><option value="">— YEAR —</option></select></label>
+        <label class="field grow"><span>GRAND PRIX</span><select id="cfg-gp" autocomplete="off"><option value="">— GRAND PRIX —</option></select></label>
+        <label class="field"><span>SESSION</span><select id="cfg-session" autocomplete="off" style="min-width:120px"><option value="">—</option></select></label>
+        <label class="field" id="driver-field"><span>DRIVER</span><select id="cfg-driver" autocomplete="off" style="min-width:150px"><option value="">— DRIVER —</option></select></label>
+        <label class="field" id="team-field" style="display:none"><span>TEAM</span><select id="cfg-team" autocomplete="off" style="min-width:190px"><option value="">— TEAM —</option></select></label>
+        <label class="field"><span>FROM LAP</span><select id="cfg-from" autocomplete="off" style="min-width:78px"><option value="">—</option></select></label>
+        <label class="field"><span>TO LAP</span><select id="cfg-to" autocomplete="off" style="min-width:78px"><option value="">—</option></select></label>
       </div>
     </div>
 
@@ -175,7 +171,7 @@
     <div class="ctlgroup" id="manual-group">
       <div class="ctltitle">TEAM RADIO — UPLOAD OR RECORD A CLIP, MAP IT TO A LAP</div>
       <div class="voicebar">
-        <label class="field"><span>LAP #</span><select id="up-lap" style="min-width:78px"><option value="">—</option></select></label>
+        <label class="field"><span>LAP #</span><select id="up-lap" autocomplete="off" style="min-width:78px"><option value="">—</option></select></label>
         <label class="field grow"><span>AUDIO FILE</span><input id="up-file" type="file" accept="audio/*"></label>
         <button class="btn rec" id="up-record">● RECORD</button>
         <button class="btn" id="up-btn">↑ ADD CLIP</button>
@@ -388,21 +384,43 @@ function showOverlay(on,text){ $('overlay').classList.toggle('on',on); if(text)$
 function fillLapSelect(id,min,max,sel){ let h=''; for(let n=min;n<=max;n++) h+=`<option value="${n}">${n}</option>`; const e=$(id); e.innerHTML=h||'<option value="">—</option>'; if(sel!=null && e.querySelector(`option[value="${sel}"]`)) e.value=String(sel); }
 
 let CATALOG = {years:[], by_year:{}};
-const gpDatasetName = () => { const o=$('cfg-gp').selectedOptions[0]; return o ? (o.dataset.gp || (val('cfg-year')+' '+o.value)) : ''; };
+const gpDatasetName = () => { const o=$('cfg-gp').selectedOptions[0]; return (o && o.value) ? (o.dataset.gp || (val('cfg-year')+' '+o.value)) : ''; };
 
 async function loadCatalog(){
   try{
     CATALOG = await (await fetch(location.origin+'/api/dataset/catalog')).json();
-    $('cfg-year').innerHTML = CATALOG.years.map(y=>`<option>${y}</option>`).join('');
-    $('cfg-year').value = CATALOG.years.includes('2020')?'2020':CATALOG.years[0];
-    populateGPs();
+    // leading placeholder, nothing auto-selected — the UI starts fresh
+    $('cfg-year').innerHTML = '<option value="">— YEAR —</option>' +
+      CATALOG.years.map(y=>`<option>${y}</option>`).join('');
+    $('cfg-year').selectedIndex = 0;   // beat browser autofill; start on the placeholder
   }catch(e){ setImportStatus('could not load dataset catalog: '+e.message,'err'); }
 }
-async function populateGPs(){
-  const y=val('cfg-year'); const gps=CATALOG.by_year[y]||[]; const g=$('cfg-gp'); const prev=g.value;
-  g.innerHTML = gps.map(x=>`<option value="${x.name}" data-gp="${x.dataset_gp}">${x.name} · ${x.count} clips</option>`).join('');
-  if(gps.some(x=>x.name===prev)) g.value=prev; else if(gps.some(x=>x.name==='Turkish Grand Prix')) g.value='Turkish Grand Prix';
+
+// reset every downstream picker to its placeholder (used when year/GP is cleared)
+function resetDownstream(){
+  $('cfg-session').innerHTML='<option value="">—</option>';
+  $('cfg-driver').innerHTML='<option value="">— DRIVER —</option>';
+  $('cfg-team').innerHTML='<option value="">— TEAM —</option>';
+  $('cfg-from').innerHTML='<option value="">—</option>';
+  $('cfg-to').innerHTML='<option value="">—</option>';
+  $('up-lap').innerHTML='<option value="">—</option>';
+  TEAMS=[]; $('results').innerHTML=''; DASHBOARDS=[];
+}
+
+// year -> GP list only (no auto-select); picking a GP drives the rest
+function populateGPs(){
+  const y=val('cfg-year'); const g=$('cfg-gp');
+  resetDownstream();
+  const gps = y ? (CATALOG.by_year[y]||[]) : [];
+  g.innerHTML = '<option value="">— GRAND PRIX —</option>' +
+    gps.map(x=>`<option value="${x.name}" data-gp="${x.dataset_gp}">${x.name} · ${x.count} clips</option>`).join('');
+}
+
+// GP -> sessions + laps + drivers/teams
+async function cascadeFromGP(){
+  if(!val('cfg-gp')){ resetDownstream(); return; }
   await populateSessions();
+  populateLaps();
   MODE==='team' ? populateTeams() : populateDrivers();
 }
 
@@ -427,14 +445,14 @@ async function populateDrivers(){
     const r = await (await fetch(location.origin+'/api/dataset/drivers?gp='+encodeURIComponent(gp))).json();
     const drivers=r.drivers||[];
     d.innerHTML = drivers.map(x=>`<option value="${x.abbr}">#${x.racing_number} ${x.abbr} · ${x.count} clips</option>`).join('') || '<option value="">no drivers</option>';
-    if([...d.options].some(o=>o.value==='HAM')) d.value='HAM';
     setImportStatus(`${drivers.length} drivers available — pick one, then IMPORT`,'ok');
-  }catch(e){ d.innerHTML='<option value="HAM">HAM</option>'; setImportStatus('could not load drivers: '+e.message,'err'); }
+  }catch(e){ d.innerHTML='<option value="">no drivers</option>'; setImportStatus('could not load drivers: '+e.message,'err'); }
   finally{ d.disabled=false; gate(true); }
 }
 let TEAMS = [];
 async function populateTeams(){
-  const t=$('cfg-team'); t.innerHTML='<option>loading teams…</option>'; t.disabled=true; gate(false);
+  const t=$('cfg-team'); if(!val('cfg-gp')) return;
+  t.innerHTML='<option>loading teams…</option>'; t.disabled=true; gate(false);
   setImportStatus('loading teams for this Grand Prix…','busy');
   try{
     const r = await (await fetch(location.origin+`/api/dataset/teams?year=${+val('cfg-year')}&gp=${encodeURIComponent(val('cfg-gp'))}&session=${encodeURIComponent(val('cfg-session'))}`)).json();
@@ -443,6 +461,19 @@ async function populateTeams(){
     setImportStatus(`${TEAMS.length} teams available — pick one, then IMPORT`,'ok');
   }catch(e){ t.innerHTML='<option value="">teams unavailable</option>'; setImportStatus('could not load teams: '+e.message,'err'); }
   finally{ t.disabled=false; gate(true); }
+}
+async function populateLaps(){
+  const f=$('cfg-from'), t=$('cfg-to');
+  if(!val('cfg-gp') || !val('cfg-session')) return;
+  f.innerHTML='<option value="">…</option>'; t.innerHTML='<option value="">…</option>';
+  f.disabled=true; t.disabled=true;
+  try{
+    const r=await (await fetch(location.origin+`/api/dataset/lap-range?year=${+val('cfg-year')}&gp=${encodeURIComponent(val('cfg-gp'))}&session=${encodeURIComponent(val('cfg-session'))}`)).json();
+    const lo=r.lap_min, hi=r.lap_max;
+    if(lo && hi){ fillLapSelect('cfg-from',lo,hi,lo); fillLapSelect('cfg-to',lo,hi,hi); fillLapSelect('up-lap',lo,hi,lo); }
+    else { f.innerHTML='<option value="">—</option>'; t.innerHTML='<option value="">—</option>'; }
+  }catch(e){ f.innerHTML='<option value="">—</option>'; t.innerHTML='<option value="">—</option>'; }
+  finally{ f.disabled=false; t.disabled=false; }
 }
 function gate(on){ $('import-btn').disabled=!on; $('run-btn').disabled=!on; }
 function currentTeam(){ return TEAMS[+val('cfg-team')] || null; }
@@ -491,33 +522,46 @@ async function toggleRecord(){
   }catch(e){ setUpStatus('mic unavailable: '+e.message,'err'); }
 }
 
+// POST JSON and parse the reply defensively: a 500 returns a plain-text body
+// ("Internal Server Error"), so r.json() would throw a confusing parse error —
+// read the text first and surface a real message.
+async function postJson(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const text = await r.text();
+  let d; try{ d = text ? JSON.parse(text) : {}; }catch(_){ d = {detail:text}; }
+  if(!r.ok) throw new Error(d.detail || `${r.status} ${r.statusText}`);
+  return d;
+}
+
 // ---- import a single driver into a clips dir; returns the import result ----
 async function importOne(driver, clipsDir){
   const body = { year:+val('cfg-year'), gp:val('cfg-gp'), session:val('cfg-session'), driver, lap_from:1, lap_to:99, limit:40, clips_dir:clipsDir };
-  const r = await fetch(location.origin+'/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const d = await r.json(); if(!r.ok) throw new Error(d.detail||r.status); return d;
+  return postJson(location.origin+'/api/import', body);
 }
 async function importRadio(){
   gate(false); DASHBOARDS.forEach(d=>d.pause()); showOverlay(true,'IMPORTING REAL RADIO · HUGGING FACE');
   try{
     if(MODE==='team'){
       const drs=teamDrivers(); if(drs.length<2) throw new Error('pick a team with two drivers');
-      // import each driver independently (one retry) so a transient HF 500 on one
-      // driver is reported, not silently swallowed
-      let rng=null; const summary=[];
+      // import each driver independently, retrying the transient HF 500s, and keep
+      // the actual failure reason so it's shown instead of a silent ✕
+      let rng=null; const summary=[], errors=[];
       for(const dr of drs){
-        setImportStatus(`importing radio for ${dr.abbr}…`,'busy');
-        let ok=false;
-        for(let attempt=0; attempt<2 && !ok; attempt++){
+        let ok=false, lastErr='';
+        for(let attempt=0; attempt<3 && !ok; attempt++){
+          setImportStatus(`importing radio for ${dr.abbr}…`+(attempt?` (retry ${attempt})`:''),'busy');
           try{ const d=await importOne(dr.abbr, clipsDirFor(dr.abbr));
             rng=rng||[d.race_lap_min,d.race_lap_max]; summary.push(`${dr.abbr} ${d.imported.length}`); ok=true;
-          }catch(e){ if(attempt) summary.push(`${dr.abbr} ✕`); }
+          }catch(e){ lastErr=e.message; }
         }
+        if(!ok){ summary.push(`${dr.abbr} ✕`); errors.push(`${dr.abbr}: ${lastErr}`); }
       }
       if(rng){ fillLapSelect('cfg-from',rng[0],rng[1],rng[0]); fillLapSelect('cfg-to',rng[0],rng[1],rng[1]); }
       $('results').innerHTML=''; DASHBOARDS=[];
-      const bad = summary.some(s=>s.includes('✕'));
-      setImportStatus(`${currentTeam().team}: ${summary.join(' · ')} clips` + (bad?' — a driver failed, click IMPORT again':' — now RUN ANALYSIS'), bad?'err':'ok');
+      const bad = errors.length>0;
+      setImportStatus(`${currentTeam().team}: ${summary.join(' · ')} clips`
+        + (bad ? ` — ${errors.join(' · ')} (Hugging Face flaked; click IMPORT again)` : ' — now RUN ANALYSIS'),
+        bad?'err':'ok');
     } else {
       setImportStatus('importing real radio from Hugging Face…','busy');
       const d=await importOne(val('cfg-driver'),'clips');
@@ -533,8 +577,7 @@ async function importRadio(){
 
 async function analyzeOne(driver, clipsDir, lo, hi){
   const body={ year:+val('cfg-year'), gp:val('cfg-gp'), session:val('cfg-session'), driver, lap_from:lo, lap_to:hi, clips_dir:clipsDir };
-  const r=await fetch(location.origin+'/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const d=await r.json(); if(!r.ok) throw new Error(d.detail||r.status); return d;
+  return postJson(location.origin+'/api/analyze', body);
 }
 async function runAnalysis(){
   let lo=+val('cfg-from'), hi=+val('cfg-to'); if(lo>hi)[lo,hi]=[hi,lo];
@@ -607,8 +650,8 @@ async function load(){
 // wiring
 document.querySelectorAll('#modeseg button').forEach(b=> b.onclick=()=>setMode(b.dataset.mode));
 $('cfg-year').onchange = ()=>{ DASHBOARDS.forEach(d=>d.pause()); populateGPs(); renderHeader(); };
-$('cfg-gp').onchange   = async ()=>{ DASHBOARDS.forEach(d=>d.pause()); await populateSessions(); MODE==='team'?populateTeams():populateDrivers(); renderHeader(); };
-$('cfg-session').onchange = ()=>{ if(MODE==='team') populateTeams(); };
+$('cfg-gp').onchange   = ()=>{ DASHBOARDS.forEach(d=>d.pause()); cascadeFromGP(); renderHeader(); };
+$('cfg-session').onchange = ()=>{ populateLaps(); if(MODE==='team') populateTeams(); };
 $('cfg-driver').onchange = renderHeader;
 $('cfg-team').onchange = renderHeader;
 $('import-btn').onclick = importRadio;

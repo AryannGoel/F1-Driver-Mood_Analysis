@@ -62,13 +62,68 @@ def text_emotions(text: str) -> dict:
 # not the team, we keep the noisier (in-car) speech and drop the clean engineer
 # speech — but only when the clip clearly splits into two sources; a single-speaker
 # clip is left whole, so this never degrades the common case.
+#
+# Audio is loaded with soundfile + soxr and framed with plain NumPy — deliberately
+# no librosa, because librosa pulls in numba, whose compiled extension is blocked on
+# some locked-down Windows machines (Application Control), which used to crash the
+# whole analysis at the first clip.
 _HOP = 512
+_FRAME = 2048
 
 
 def _load_audio(path, sr=16000):
-    import librosa
-    y, _ = librosa.load(path, sr=sr, mono=True)
-    return y.astype("float32"), sr
+    """Decode any clip to a mono float32 array at `sr` Hz (no librosa/numba)."""
+    import numpy as np
+    import soundfile as sf
+    y, orig_sr = sf.read(path, dtype="float32", always_2d=False)
+    if getattr(y, "ndim", 1) > 1:                     # stereo -> mono
+        y = y.mean(axis=1)
+    y = np.ascontiguousarray(y, dtype="float32")
+    if orig_sr != sr and len(y):
+        try:
+            import soxr
+            y = soxr.resample(y, orig_sr, sr).astype("float32")
+        except Exception:                             # linear-interp fallback
+            n = max(1, int(round(len(y) * sr / orig_sr)))
+            y = np.interp(np.linspace(0, len(y), n, endpoint=False),
+                          np.arange(len(y)), y).astype("float32")
+    return y, sr
+
+
+def _frames(y):
+    """Centre-padded frames (frame=_FRAME, hop=_HOP), matching librosa's framing so
+    the RMS and flatness arrays line up frame-for-frame with the old behaviour."""
+    import numpy as np
+    pad = _FRAME // 2
+    yp = np.pad(y, pad, mode="reflect") if len(y) > pad else np.pad(y, pad)
+    n = 1 + (len(yp) - _FRAME) // _HOP
+    if n <= 0:
+        return np.empty((0, _FRAME), dtype="float32")
+    idx = np.arange(_FRAME)[None, :] + _HOP * np.arange(n)[:, None]
+    return yp[idx]
+
+
+def _rms(y):
+    """Per-frame root-mean-square energy (numpy reimplementation)."""
+    import numpy as np
+    fr = _frames(y)
+    if not len(fr):
+        return np.zeros(1, dtype="float32")
+    return np.sqrt(np.mean(fr * fr, axis=1)).astype("float32")
+
+
+def _spectral_flatness(y):
+    """Per-frame spectral flatness = geometric/arithmetic mean of the power
+    spectrum, in (0, 1] (numpy reimplementation of librosa.feature.spectral_flatness)."""
+    import numpy as np
+    fr = _frames(y)
+    if not len(fr):
+        return np.zeros(1, dtype="float32")
+    power = np.abs(np.fft.rfft(fr * np.hanning(_FRAME), axis=1)) ** 2
+    power = np.maximum(power, 1e-10)
+    gmean = np.exp(np.mean(np.log(power), axis=1))
+    amean = np.mean(power, axis=1)
+    return (gmean / amean).astype("float32")
 
 
 def _utterances(voiced, sr):
@@ -96,12 +151,11 @@ def _utterances(voiced, sr):
 def driver_audio(path):
     """Load a clip and return the driver's (in-car) audio as a 16 kHz array."""
     import numpy as np
-    import librosa
     y, sr = _load_audio(path)
     if len(y) < int(1.2 * sr):
         return y
-    rms = librosa.feature.rms(y=y, hop_length=_HOP)[0]
-    flat = librosa.feature.spectral_flatness(y=y, hop_length=_HOP)[0]
+    rms = _rms(y)
+    flat = _spectral_flatness(y)
     if rms.max() <= 0:
         return y
     thr = max(float(np.median(rms)) * 1.5, float(rms.max()) * 0.2)

@@ -46,6 +46,17 @@ def lap_times_csv(path="laps.csv"):
     return [{"lap": int(r.lap), "t": float(r.t)} for r in df.itertuples(index=False)]
 
 
+def session_lap_range(year, gp, session):
+    """Returns (min_lap, max_lap) across all drivers in this session."""
+    import fastf1
+    os.makedirs(".fastf1cache", exist_ok=True)
+    fastf1.Cache.enable_cache(".fastf1cache")
+    ses = fastf1.get_session(int(year), gp, session)
+    ses.load(telemetry=False, weather=False, messages=False)
+    nums = ses.laps["LapNumber"].dropna()
+    return int(nums.min()), int(nums.max())
+
+
 def driver_team_fastf1(year, gp, session, driver):
     """The driver's team name for this session (reuses FastF1's cache, so it's
     cheap after lap_times_fastf1 already loaded it). '' if unavailable."""

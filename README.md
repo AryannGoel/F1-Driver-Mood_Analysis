@@ -156,6 +156,7 @@ clips/            imported/uploaded audio (lapNN.mp3)
 | `GET` | `/api/dataset/drivers?gp=…` | drivers with radio at a GP, richest first |
 | `GET` | `/api/dataset/sessions?year=&gp=` | sessions of a GP that actually have radio |
 | `GET` | `/api/dataset/teams?year=&gp=&session=` | constructors + their drivers (team mode) |
+| `GET` | `/api/dataset/lap-range?year=&gp=&session=` | real lap range for a session (fills the FROM/TO dropdowns) |
 | `POST` | `/api/import` | pull a driver's radio for a GP, align to laps, download to `clips/` |
 | `POST` | `/api/analyze` | run the pipeline over the lap window → the dashboard JSON |
 | `GET` | `/api/clips` | list current clips |
@@ -181,6 +182,7 @@ Say these out loud in the pitch — they're features, not bugs:
 
 This section tracks the **major shifts in what the project is**, newest first — so the README stays honest as concepts change.
 
+- **Fresh start, real lap ranges** — the UI now loads with nothing pre-selected (no default year/GP/driver/lap); you pick a year → GP → and the session's real lap range drives the FROM/TO dropdowns from FastF1 (`/api/dataset/lap-range`), instead of hardcoded lap numbers.
 - **Sessions with audio only** — the Session dropdown is now built per-GP: each clip's UTC timestamp is bucketed against FastF1's session schedule, so only sessions that actually have radio are offered (e.g. 2023 British → Qualifying + Race, no empty practice sessions).
 - **Team mode (two drivers at once)** — a Driver / Team toggle: pick a constructor and both its drivers are imported (into separate `clips/<DRIVER>` folders) and analysed into their own full dashboards, stacked for side-by-side reading. The dashboard is now a reusable component.
 - **Multimodal emotion (more Hugging Face)** — added a third HF model, `j-hartmann/emotion-english-distilroberta-base`, reading emotion from the *transcript*, fused with the voice-tone model. The mood now reflects both how the driver *sounds* and what they *say* — so flat-voiced but frustrated calls (e.g. "brakes aren't working, man") no longer read as calm.

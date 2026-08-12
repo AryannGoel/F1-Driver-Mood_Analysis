@@ -27,15 +27,14 @@ FRONTEND = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
 
 @app.on_event("startup")
 def _prewarm_dataset():
-    """Warm the dataset catalog + the default GP's drivers in the background so the
-    UI dropdowns are ready fast (the HF /filter scan is slow the first time)."""
+    """Warm the dataset catalog in the background so the YEAR/GP dropdowns are ready
+    fast (the HF statistics scan is slow the first time)."""
     import threading
 
     def warm():
         try:
-            from dataset import catalog, drivers_for_gp
+            from dataset import catalog
             catalog()
-            drivers_for_gp("2020 Turkish Grand Prix")
         except Exception:
             pass
 
@@ -182,6 +181,17 @@ def dataset_teams(year: int, gp: str, session: str = "R"):
         raise HTTPException(502, f"dataset teams failed: {e}")
 
 
+@app.get("/api/dataset/lap-range")
+def dataset_lap_range(year: int, gp: str, session: str = "R"):
+    """Total lap range for a session (all drivers), for the FROM/TO dropdowns."""
+    from laps import session_lap_range
+    try:
+        lo, hi = session_lap_range(year, gp, session)
+        return {"lap_min": lo, "lap_max": hi}
+    except Exception as e:
+        raise HTTPException(502, f"lap range failed: {e}")
+
+
 class ImportReq(BaseModel):
     """Pull real team radio for one driver+GP from the HF dataset MikCil/f1-team-radio."""
     year: int = 2020
@@ -260,7 +270,12 @@ def analyze(req: AnalyzeReq):
         n = r["lap"]
         if n in clips:
             progress = (n - lap_min) / span
-            row = analyse_clip(clips[n], n, r["t"], progress)
+            try:
+                row = analyse_clip(clips[n], n, r["t"], progress)
+            except Exception:
+                # one unreadable/failed clip degrades to a neutral baseline instead
+                # of 500-ing the whole stint
+                row = {"lap": n, "t": round(r["t"], 1), "stress": 0, "mood": "calm", "radio": None}
         else:
             row = {"lap": n, "t": round(r["t"], 1), "stress": 0, "mood": "calm", "radio": None}
         laps.append(row)

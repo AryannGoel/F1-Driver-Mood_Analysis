@@ -22,7 +22,7 @@ DATASET = "MikCil/f1-team-radio"
 SERVER = "https://datasets-server.huggingface.co"
 
 
-def _filter(where, length=100, offset=0, retries=3):
+def _filter(where, length=100, offset=0, retries=5):
     qs = urllib.parse.urlencode({
         "dataset": DATASET, "config": "default", "split": "train",
         "where": where, "length": length, "offset": offset,
@@ -33,10 +33,11 @@ def _filter(where, length=100, offset=0, retries=3):
         try:
             with urllib.request.urlopen(url, timeout=60) as r:
                 return json.load(r)
-        except Exception as e:   # datasets-server 500s intermittently; retry
+        except Exception as e:   # datasets-server 500s intermittently; retry with backoff
             last = e
-            time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError(f"dataset filter failed: {last}")
+            if attempt < retries - 1:
+                time.sleep(min(2.0 * (attempt + 1), 8.0))
+    raise RuntimeError(f"dataset filter failed after {retries} tries: {last}")
 
 
 @functools.lru_cache(maxsize=1)
