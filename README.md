@@ -84,6 +84,7 @@ How we use it (`dataset.py`):
 - **Catalog** — the Year ▸ Grand Prix ▸ Driver dropdowns are built from the dataset itself (via the HF *datasets-server* `/statistics` and `/filter` APIs), so you can **only pick combinations that actually have audio**. The dataset's GP names match FastF1's event schedule 100%, so every listed GP is also loadable.
 - **Import** — for a chosen driver+GP we pull just that handful of rows (not the whole 2.5 GB), download the audio in **parallel** (the HF asset URLs are slow one-by-one), and map each clip to a lap.
 - **Lap alignment** — each clip's `message_timestamp` is matched against FastF1's **absolute per-lap start time** (`LapStartDate`, which requires telemetry to be loaded), so a clip is filed under the exact lap it happened on — not guessed.
+- **Optional local copy (much faster, offline)** — the HF datasets-server API is slow and 500s intermittently, so `python _download_dataset.py` pulls the 5 parquet shards (~2.57 GB, audio embedded) into `.hfcache/`. When present, `localset.py` serves the catalog/driver/clip lookups straight from the parquet: **dropdowns drop from ~15–160 s (often failing) to ~0.2 s, and import from minutes to ~5 s.** `dataset.py` falls back to the API automatically when the parquet isn't downloaded, so nothing else changes. Analysis speed is unaffected — that's CPU model inference, not data fetching.
 
 ---
 
@@ -96,7 +97,7 @@ The hackathon requires most of the AI/ML to run on Hugging Face. Here it is **10
 | Speech → text | `openai/whisper-base.en` | `transformers` pipeline |
 | Speech → emotion (tone of voice) | `superb/wav2vec2-base-superb-er` | `transformers` pipeline |
 | Text → emotion (the words) | `j-hartmann/emotion-english-distilroberta-base` | `transformers` pipeline |
-| Data | `MikCil/f1-team-radio` | HF datasets-server |
+| Data | `MikCil/f1-team-radio` | HF datasets-server (or local parquet) |
 
 **Three HF models, two modalities.** Team radio is short and compressed, so the voice model is often unsure — so we also read the emotion in the **transcript** with a text-classification model and **fuse** the two (`mood.fuse`, default 60% voice / 40% words). A clip where the voice sounds flat but the words are *"Don't [...] me, man"* now reads as elevated, not calm — the words steady the read.
 
@@ -117,9 +118,18 @@ python -m uvicorn app:app --port 8000
 
 Then open **http://localhost:8000**.
 
-- First run downloads the two HF models (~1.5 GB, cached afterwards).
-- CPU-only is fine and intended for reliability; a full analysis of a lap window takes tens of seconds on CPU.
-- FastF1 caches session data under `.fastf1cache/`; imported clips land in `clips/`.
+**Optional but recommended — download the dataset locally:**
+
+```bash
+python _download_dataset.py    # ~2.57 GB, one time → .hfcache/
+```
+
+This makes the dropdowns and imports near-instant and immune to the Hugging Face datasets-server being slow or down. Skip it and everything still works via the API, just slower. (On Windows, `run.bat` does the pip install + launch for you.)
+
+- First run downloads the three HF models (~1.5 GB, cached afterwards).
+- CPU-only is fine and intended for reliability; a full analysis of a lap window takes tens of seconds on CPU (~6 s per clip).
+- Audio is decoded with `soundfile` + `soxr` (no `ffmpeg` and no `numba` needed).
+- FastF1 caches session data under `.fastf1cache/`; imported clips land in `clips/`; the optional local dataset lives in `.hfcache/`.
 
 **Using the dashboard:**
 
@@ -137,13 +147,16 @@ Then open **http://localhost:8000**.
 app.py            FastAPI app + all endpoints (UI, health, clips, import, analyze, dataset catalog)
 pipeline.py       HF inference — Whisper (ASR) + wav2vec2 (SER) + driver-voice isolation
 mood.py           domain layer: emotion probabilities → mood + 0–100 stress
-dataset.py        MikCil/f1-team-radio: catalog, driver lookup, import + lap alignment (parallel download)
+dataset.py        MikCil/f1-team-radio: catalog, driver lookup, import + lap alignment (API, local fallback)
+localset.py       optional local mirror — reads catalog/clips/audio from the downloaded parquet shards
+_download_dataset.py  one-time: download the dataset parquet locally (~2.57 GB → .hfcache/)
 laps.py           FastF1 real lap times, absolute lap-start times, driver→team, local clip discovery
 schemas.py        pydantic output contract (Meta + Lap)
 prepare_laps.py   CLI to export a driver's laps to laps.csv
 frontend/index.html   the served single-page UI (no build step)
 requirements.txt  dependencies
 clips/            imported/uploaded audio (lapNN.mp3)
+.hfcache/         optional downloaded dataset (gitignored)
 ```
 
 ### API endpoints
@@ -175,6 +188,7 @@ Say these out loud in the pitch — they're features, not bugs:
 - **Driver isolation is a heuristic, not diarization.** It uses audio energy + spectral flatness (in-car mic vs clean pit-wall feed) and only trims when there's a clear two-speaker split. It can't isolate a driver who never speaks in a clip. The accurate alternative (gated `pyannote` diarization) was deliberately not used — it needs an HF token + accepting its terms.
 - **Lap alignment is real** but depends on FastF1 exposing absolute lap times (telemetry load), and on the dataset's GP name matching FastF1's — which it does for the seasons checked.
 - **CPU by design** — reliable over a demo network beats a flaky GPU download.
+- **No numba in the audio path** — clips are decoded/resampled with `soundfile` + `soxr` and framed in NumPy, deliberately avoiding `librosa`, whose `numba` dependency ships a native DLL that Windows Application Control blocks on some locked-down machines (it used to crash every analysis). `librosa` stays installed only because `transformers` imports it lazily.
 
 ---
 
@@ -182,6 +196,10 @@ Say these out loud in the pitch — they're features, not bugs:
 
 This section tracks the **major shifts in what the project is**, newest first — so the README stays honest as concepts change.
 
+- **Local dataset option** — `python _download_dataset.py` caches the dataset's parquet shards locally; `localset.py` then serves catalog/driver/clip lookups + audio from disk (with automatic API fallback), cutting dropdowns from ~15–160 s to ~0.2 s and imports from minutes to ~5 s, and eliminating the datasets-server 500s.
+- **Numba-free audio** — replaced `librosa` audio loading + feature extraction with `soundfile` + `soxr` + NumPy, so analysis runs on locked-down Windows where numba's native DLL is blocked (previously every analysis 500'd at the first clip).
+- **Meaningful stats for composed drivers** — the per-driver stats panel now falls back to a driver's PEAK STRESS / PEAK RADIO moment when they never cross the "stressed" threshold, instead of blank dashes (so e.g. a calm-all-race driver still reports real numbers).
+- **Clearer failures** — dropdown/import errors now surface the real reason (and retry the transient HF 500s) instead of a cryptic JSON-parse error or a silent ✕.
 - **Fresh start, real lap ranges** — the UI now loads with nothing pre-selected (no default year/GP/driver/lap); you pick a year → GP → and the session's real lap range drives the FROM/TO dropdowns from FastF1 (`/api/dataset/lap-range`), instead of hardcoded lap numbers.
 - **Sessions with audio only** — the Session dropdown is now built per-GP: each clip's UTC timestamp is bucketed against FastF1's session schedule, so only sessions that actually have radio are offered (e.g. 2023 British → Qualifying + Race, no empty practice sessions).
 - **Team mode (two drivers at once)** — a Driver / Team toggle: pick a constructor and both its drivers are imported (into separate `clips/<DRIVER>` folders) and analysed into their own full dashboards, stacked for side-by-side reading. The dashboard is now a reusable component.
