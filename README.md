@@ -128,7 +128,7 @@ Then open **http://localhost:8000**.
 3. (Optional) Manually **↑ Add Clip** or **● Record** a clip for a lap, or **✕ Remove** / **✕ Clear All Clips** to reset.
 4. Set the **From/To lap** window and click **▶ Run Analysis**.
 5. Read the dashboard: stress-vs-laptime chart, per-lap transcript, driver **tone + confidence**, and **▶ play the actual clip**.
-
+> ⚠️ **Note:** Loading the timings for the selected lap session can take a few minutes, so please be patient while it fetches the data.
 ---
 
 ## 6. Project structure
