@@ -13,6 +13,11 @@ torch                     # CPU build is fine: pip install torch --index-url htt
 # --- real F1 lap data + audio ---
 fastf1                    # official lap times + absolute lap start times (pulls pandas)
 numpy
-librosa                   # audio decode + driver-voice isolation (RMS / spectral flatness)
-soundfile                 # audio I/O backend for librosa
+soundfile                 # decode the radio clips (mp3/wav) — no numba, works on locked-down Windows
+soxr                      # resample clips to 16 kHz for the models (numba-free)
+librosa                   # NOT used for audio here (numba's DLL is blocked on some machines);
+                          # kept only because transformers imports it lazily at pipeline load
 requests
+
+# --- optional: local copy of the HF team-radio dataset (python _download_dataset.py) ---
+pyarrow                   # read the downloaded parquet shards -> instant dropdowns + imports
