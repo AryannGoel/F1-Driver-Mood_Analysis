@@ -331,11 +331,31 @@ function makeDashboard(container, data){
   function renderStats(){
     const L=st.laps;
     const calm=avg(L.filter(d=>d.mood==='calm'||d.mood==='focused').map(d=>d.t));
-    const hot=avg(L.filter(d=>d.mood==='stressed'||d.mood==='tired').map(d=>d.t));
-    const trig=L.find(d=>d.mood==='stressed'||d.mood==='tired');
+    const stressed=L.filter(d=>d.mood==='stressed'||d.mood==='tired');
+    const radio=L.filter(d=>d.radio);
+    // fallback for a composed driver (radio analysed, but never crosses the stress
+    // line): use their single most-pressured call so the panel shows real numbers,
+    // not three dashes that look like a broken analysis.
+    const peak=radio.length ? radio.reduce((a,b)=>b.stress>a.stress?b:a) : null;
     const s=(k,v,c)=>`<div class="stat"><div class="k">${k}</div><div class="v" style="color:${c}">${v}</div></div>`;
-    q('.stats').innerHTML = s('CALM AVG',calm?calm.toFixed(2)+'s':'—','var(--calm)')+s('STRESSED AVG',hot?hot.toFixed(2)+'s':'—','var(--stressed)')+
-      s('PACE LOST',(hot&&calm)?'+'+(hot-calm).toFixed(2)+'s / lap':'—',RED)+s('TRIGGER',trig?'LAP '+trig.lap+' RADIO':'—',INK);
+    let t2,t3,t4;
+    if(stressed.length){                              // genuine stress moments
+      const hot=avg(stressed.map(d=>d.t));
+      const trig=stressed.slice().sort((a,b)=>a.lap-b.lap)[0];
+      t2=s('STRESSED AVG',hot.toFixed(2)+'s','var(--stressed)');
+      t3=s('PACE LOST',(hot&&calm)?'+'+(hot-calm).toFixed(2)+'s / lap':'—',RED);
+      t4=s('TRIGGER','LAP '+trig.lap+' RADIO',INK);
+    } else if(peak){                                  // composed driver — show the peak instead
+      const dt=(peak.t&&calm)?(peak.t-calm):null;
+      t2=s('PEAK STRESS',peak.stress+'%','var(--stressed)');
+      t3=s('PACE LOST',(dt!=null&&dt>0.05)?'+'+dt.toFixed(2)+'s / lap':'held pace',RED);
+      t4=s('PEAK RADIO','LAP '+peak.lap,INK);
+    } else {                                          // no radio at all
+      t2=s('STRESSED AVG','—','var(--stressed)');
+      t3=s('PACE LOST','—',RED);
+      t4=s('TRIGGER','—',INK);
+    }
+    q('.stats').innerHTML = s('CALM AVG',calm?calm.toFixed(2)+'s':'—','var(--calm)')+t2+t3+t4;
   }
 
   function renderAll(){ renderSession(); renderRadio(); renderClip(); renderChart(); renderStats(); }
